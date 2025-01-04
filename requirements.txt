@@ -1,0 +1,9 @@
+streamlit==1.31.0
+tensorflow==2.15.0
+Pillow==10.0.0
+numpy==1.24.3
+opencv-python-headless==4.8.0.76
+pandas==2.0.3
+plotly==5.18.0
+reportlab==4.0.4
+python-dateutil==2.8.2
