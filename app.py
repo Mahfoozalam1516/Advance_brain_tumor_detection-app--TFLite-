@@ -467,11 +467,11 @@ def main():
             if uploaded_file is not None:
                 try:
                     image = Image.open(uploaded_file)
-                    st.image(image, caption='Original MRI Scan', use_column_width=True)
+                    st.image(image, caption='Original MRI Scan',use_container_width=True)
                     
                     if st.session_state.settings['enable_image_enhancement']:
                         enhanced_image = advanced_image_enhancement(image)
-                        st.image(enhanced_image, caption='Enhanced MRI Scan', use_column_width=True)
+                        st.image(enhanced_image, caption='Enhanced MRI Scan',use_container_width=True)
                         if st.button('Compare Original vs Enhanced'):
                             comparison_fig = compare_images(image, enhanced_image)
                             st.pyplot(comparison_fig)
@@ -573,7 +573,7 @@ def main():
                                         showlegend=False,
                                         height=400
                                     )
-                                    st.plotly_chart(fig, use_column_width=True)
+                                    st.plotly_chart(fig,use_container_width=True)
                                 
                                 with viz_tabs[1]:
                                     # Radar chart
@@ -593,7 +593,7 @@ def main():
                                         showlegend=False,
                                         height=400
                                     )
-                                    st.plotly_chart(fig, use_column_width=True)
+                                    st.plotly_chart(fig,use_container_width=True)
                                 
                                 with viz_tabs[2]:
                                     # Confidence gauge
@@ -617,7 +617,7 @@ def main():
                                         },
                                         title={'text': "Confidence Level"}
                                     ))
-                                    st.plotly_chart(fig, use_column_width=True)
+                                    st.plotly_chart(fig,use_container_width=True)
                 
                 except Exception as e:
                     st.error(f"Error during analysis: {str(e)}")
