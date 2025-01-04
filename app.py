@@ -165,7 +165,10 @@ def predict_tumor(interpreter, img_array):
         class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
         confidence = float(np.max(predictions) * 100)  # Convert to native Python float
         
-        return class_names[predicted_class[0]], confidence, predictions.tolist()  # Convert predictions to list
+        # Convert predictions to a regular Python list
+        predictions_list = predictions[0].tolist()
+        
+        return class_names[predicted_class[0]], confidence, predictions_list
     except Exception as e:
         st.error(f"Error predicting tumor: {str(e)}")
         return None, None, None
@@ -488,7 +491,7 @@ def main():
                                 'date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 'prediction': predicted_class,
                                 'confidence': confidence,
-                                'raw_predictions': raw_predictions.tolist(),
+                                'raw_predictions': [raw_predictions],  # Wrap in list since it's already converted
                                 'settings_used': st.session_state.settings.copy()
                             }
                             
@@ -683,13 +686,13 @@ def main():
                                 image,
                                 enhance=st.session_state.settings['enable_image_enhancement']
                             )
-                            predicted_class, confidence, raw_predictions = predict_tumor(model, processed_image)
+                            predicted_class, confidence, raw_predictions = predict_tumor(interpreter, processed_image)
                             
                             batch_results.append({
                                 'filename': getattr(file, 'name', 'unknown'),
                                 'prediction': predicted_class,
                                 'confidence': confidence,
-                                'raw_predictions': raw_predictions.tolist()
+                                'raw_predictions': [raw_predictions]  # Wrap in list since it's already converted
                             })
                             
                         except Exception as e:
@@ -1094,7 +1097,7 @@ def save_result(result_data):
             'date': result_data['date'],
             'prediction': result_data['prediction'],
             'confidence': float(result_data['confidence']),
-            'raw_predictions': [[float(x) for x in row] for row in result_data['raw_predictions']],
+            'raw_predictions': result_data['raw_predictions'],  # Already a list
             'settings_used': result_data['settings_used']
         }
         
