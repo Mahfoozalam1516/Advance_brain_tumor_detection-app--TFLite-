@@ -21,6 +21,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import sys
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 
 # Set page configuration
 st.set_page_config(
@@ -158,9 +163,9 @@ def predict_tumor(interpreter, img_array):
         predictions = interpreter.get_tensor(output_details[0]['index'])
         predicted_class = np.argmax(predictions, axis=1)
         class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
-        confidence = np.max(predictions) * 100
+        confidence = float(np.max(predictions) * 100)  # Convert to native Python float
         
-        return class_names[predicted_class[0]], confidence, predictions
+        return class_names[predicted_class[0]], confidence, predictions.tolist()  # Convert predictions to list
     except Exception as e:
         st.error(f"Error predicting tumor: {str(e)}")
         return None, None, None
@@ -202,110 +207,117 @@ def compare_images(original, enhanced):
 
 # Enhanced PDF report generation
 def create_advanced_report(result_data, image=None):
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    except ImportError:
+        st.error("ReportLab is not installed. Please install it using: pip install reportlab")
+        return BytesIO()
     
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
-    styles = getSampleStyleSheet()
-    story = []
+    try:
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
     
-    # Enhanced title and header
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        spaceAfter=30,
-        textColor=colors.HexColor('#1a237e')
-    )
-    story.append(Paragraph("Advanced Brain Tumor Detection Report", title_style))
-    story.append(Spacer(1, 12))
+        # Enhanced title and header
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            textColor=colors.HexColor('#1a237e')
+        )
+        story.append(Paragraph("Advanced Brain Tumor Detection Report", title_style))
+        story.append(Spacer(1, 12))
     
-    # Add metadata
-    metadata_style = ParagraphStyle(
-        'Metadata',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.grey
-    )
-    story.append(Paragraph(f"Generated on: {result_data['date']}", metadata_style))
-    story.append(Paragraph(f"Report ID: {datetime.datetime.now().strftime('%Y%m%d%H%M%S')}", metadata_style))
-    story.append(Spacer(1, 20))
+        # Add metadata
+        metadata_style = ParagraphStyle(
+            'Metadata',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.grey
+        )
+        story.append(Paragraph(f"Generated on: {result_data['date']}", metadata_style))
+        story.append(Paragraph(f"Report ID: {datetime.datetime.now().strftime('%Y%m%d%H%M%S')}", metadata_style))
+        story.append(Spacer(1, 20))
     
-    # Add results with enhanced formatting
-    result_style = ParagraphStyle(
-        'Result',
-        parent=styles['Normal'],
-        fontSize=14,
-        textColor=colors.HexColor('#1b5e20') if result_data['prediction'] == 'No Tumor' else colors.HexColor('#b71c1c')
-    )
-    story.append(Paragraph(f"Diagnosis: {result_data['prediction']}", result_style))
-    story.append(Paragraph(f"Confidence: {result_data['confidence']:.2f}%", result_style))
+        # Add results with enhanced formatting
+        result_style = ParagraphStyle(
+            'Result',
+            parent=styles['Normal'],
+            fontSize=14,
+            textColor=colors.HexColor('#1b5e20') if result_data['prediction'] == 'No Tumor' else colors.HexColor('#b71c1c')
+        )
+        story.append(Paragraph(f"Diagnosis: {result_data['prediction']}", result_style))
+        story.append(Paragraph(f"Confidence: {result_data['confidence']:.2f}%", result_style))
     
-    # Add detailed analysis
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("Detailed Analysis", styles['Heading2']))
+        # Add detailed analysis
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Detailed Analysis", styles['Heading2']))
     
-    # Create a table for probability distribution
-    data = [['Class', 'Probability']]
-    for idx, prob in enumerate(['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']):
-        data.append([prob, f"{result_data['raw_predictions'][0][idx] * 100:.2f}%"])
+        # Create a table for probability distribution
+        data = [['Class', 'Probability']]
+        for idx, prob in enumerate(['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']):
+            data.append([prob, f"{result_data['raw_predictions'][0][idx] * 100:.2f}%"])
     
-    table = Table(data, colWidths=[200, 100])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 12),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('BOX', (0, 0), (-1, -1), 2, colors.black),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-    ]))
-    story.append(table)
+        table = Table(data, colWidths=[200, 100])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOX', (0, 0), (-1, -1), 2, colors.black),
+            ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
+        ]))
+        story.append(table)
     
-    # Add recommendations
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("Recommendations:", styles['Heading2']))
-    if result_data['prediction'] != 'No Tumor':
-        recommendations = [
-            "1. Consult with a neurologist immediately",
-            "2. Schedule additional diagnostic tests (MRI with contrast, CT scan)",
-            "3. Maintain a copy of this report for medical records",
-            "4. Consider seeking a second opinion",
-            "5. Schedule regular follow-up appointments"
-        ]
-    else:
-        recommendations = [
-            "1. Continue regular health check-ups",
-            "2. Maintain a healthy lifestyle",
-            "3. Report any new symptoms to your healthcare provider",
-            "4. Schedule next screening as recommended by your doctor"
-        ]
+        # Add recommendations
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Recommendations:", styles['Heading2']))
+        if result_data['prediction'] != 'No Tumor':
+            recommendations = [
+                "1. Consult with a neurologist immediately",
+                "2. Schedule additional diagnostic tests (MRI with contrast, CT scan)",
+                "3. Maintain a copy of this report for medical records",
+                "4. Consider seeking a second opinion",
+                "5. Schedule regular follow-up appointments"
+            ]
+        else:
+            recommendations = [
+                "1. Continue regular health check-ups",
+                "2. Maintain a healthy lifestyle",
+                "3. Report any new symptoms to your healthcare provider",
+                "4. Schedule next screening as recommended by your doctor"
+            ]
     
-    for rec in recommendations:
-        story.append(Paragraph(rec, styles['Normal']))
+        for rec in recommendations:
+            story.append(Paragraph(rec, styles['Normal']))
     
-    # Add disclaimer
-    story.append(Spacer(1, 30))
-    disclaimer_style = ParagraphStyle(
-        'Disclaimer',
-        parent=styles['Normal'],
-        fontSize=8,
-        textColor=colors.grey
-    )
-    story.append(Paragraph("DISCLAIMER: This report is generated by an AI-based system and should not be used as the sole basis for medical decisions. Always consult with qualified healthcare professionals for proper diagnosis and treatment.", disclaimer_style))
+        # Add disclaimer
+        story.append(Spacer(1, 30))
+        disclaimer_style = ParagraphStyle(
+            'Disclaimer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey
+        )
+        story.append(Paragraph("DISCLAIMER: This report is generated by an AI-based system and should not be used as the sole basis for medical decisions. Always consult with qualified healthcare professionals for proper diagnosis and treatment.", disclaimer_style))
     
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+    except Exception as e:
+        st.error(f"Error generating report: {str(e)}")
+        return BytesIO()
 
 # New function for email notifications
 def send_email_notification(recipient, result_data, pdf_report):
@@ -561,7 +573,7 @@ def main():
                                         showlegend=False,
                                         height=400
                                     )
-                                    st.plotly_chart(fig, use_container_width=True)
+                                    st.plotly_chart(fig, use_column_width=True)
                                 
                                 with viz_tabs[1]:
                                     # Radar chart
@@ -581,7 +593,7 @@ def main():
                                         showlegend=False,
                                         height=400
                                     )
-                                    st.plotly_chart(fig, use_container_width=True)
+                                    st.plotly_chart(fig, use_column_width=True)
                                 
                                 with viz_tabs[2]:
                                     # Confidence gauge
@@ -605,7 +617,7 @@ def main():
                                         },
                                         title={'text': "Confidence Level"}
                                     ))
-                                    st.plotly_chart(fig, use_container_width=True)
+                                    st.plotly_chart(fig, use_column_width=True)
                 
                 except Exception as e:
                     st.error(f"Error during analysis: {str(e)}")
@@ -1077,14 +1089,23 @@ def save_result(result_data):
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
         
+        # Convert numpy types to native Python types
+        result_data_serializable = {
+            'date': result_data['date'],
+            'prediction': result_data['prediction'],
+            'confidence': float(result_data['confidence']),
+            'raw_predictions': [[float(x) for x in row] for row in result_data['raw_predictions']],
+            'settings_used': result_data['settings_used']
+        }
+        
         filename = f"result_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(results_dir, filename)
         
         with open(filepath, 'w') as f:
-            json.dump(result_data, f, indent=4)
+            json.dump(result_data_serializable, f, indent=4)
             
     except Exception as e:
         st.warning(f"Could not save result: {str(e)}")
-
+        
 if __name__ == "__main__":
     main()
