@@ -3,7 +3,7 @@ streamlit>=1.28.0
 numpy>=1.24.0
 Pillow>=10.0.0
 pandas>=2.1.0
-opencv-python
+opencv-python-headless
 plotly>=5.18.0
 matplotlib>=3.8.0
 seaborn>=0.13.0
