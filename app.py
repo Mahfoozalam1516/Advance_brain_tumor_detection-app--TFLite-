@@ -283,16 +283,7 @@ def compare_images(original, enhanced):
 # Enhanced PDF report generation
 def create_advanced_report(result_data, image=None):
     try:
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    except ImportError:
-        st.error("ReportLab is not installed. Please install it using: pip install reportlab")
-        return BytesIO()
-    
-    buffer = BytesIO()
-    try:
+        buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
@@ -335,8 +326,26 @@ def create_advanced_report(result_data, image=None):
     
         # Create a table for probability distribution
         data = [['Class', 'Probability']]
-        for idx, prob in enumerate(['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']):
-            data.append([prob, f"{result_data['raw_predictions'][0][idx] * 100:.2f}%"])
+        class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
+        
+        # Handle raw_predictions correctly
+        raw_predictions = result_data['raw_predictions']
+        if isinstance(raw_predictions, (list, np.ndarray)):
+            # If raw_predictions is already a flat list
+            if len(raw_predictions) == len(class_names):
+                probabilities = raw_predictions
+            # If raw_predictions is nested
+            elif isinstance(raw_predictions, list) and len(raw_predictions) > 0:
+                probabilities = raw_predictions[0] if isinstance(raw_predictions[0], list) else raw_predictions
+            else:
+                probabilities = [0] * len(class_names)  # Default values if data is invalid
+        else:
+            probabilities = [0] * len(class_names)  # Default values if data is invalid
+        
+        # Add probabilities to table data
+        for class_name, prob in zip(class_names, probabilities):
+            probability_value = float(prob) * 100 if isinstance(prob, (float, np.float32, np.float64)) else float(prob)
+            data.append([class_name, f"{probability_value:.2f}%"])
     
         table = Table(data, colWidths=[200, 100])
         table.setStyle(TableStyle([
