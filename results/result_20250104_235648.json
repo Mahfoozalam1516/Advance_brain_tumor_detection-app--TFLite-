@@ -1,0 +1,23 @@
+{
+    "date": "2025-01-04 23:56:48",
+    "prediction": "Meningioma",
+    "confidence": 65.82033634185791,
+    "raw_predictions": [
+        [
+            3.553009810275398e-05,
+            0.6582033634185791,
+            0.27172133326530457,
+            0.07003981620073318
+        ]
+    ],
+    "settings_used": {
+        "confidence_threshold": 70,
+        "enable_image_enhancement": false,
+        "save_results": true,
+        "enable_notifications": false,
+        "email_notifications": "",
+        "dark_mode": false,
+        "auto_enhance": true,
+        "detection_sensitivity": "medium"
+    }
+}

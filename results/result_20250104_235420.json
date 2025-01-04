@@ -1,0 +1,23 @@
+{
+    "date": "2025-01-04 23:54:20",
+    "prediction": "No Tumor",
+    "confidence": 91.69031977653503,
+    "raw_predictions": [
+        [
+            0.0007927498663775623,
+            0.03536345437169075,
+            0.9169031977653503,
+            0.04694050922989845
+        ]
+    ],
+    "settings_used": {
+        "confidence_threshold": 70,
+        "enable_image_enhancement": false,
+        "save_results": true,
+        "enable_notifications": false,
+        "email_notifications": "",
+        "dark_mode": false,
+        "auto_enhance": true,
+        "detection_sensitivity": "medium"
+    }
+}
