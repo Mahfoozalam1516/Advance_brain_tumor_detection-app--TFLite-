@@ -165,13 +165,85 @@ def predict_tumor(interpreter, img_array):
         class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
         confidence = float(np.max(predictions) * 100)  # Convert to native Python float
         
-        # Convert predictions to a regular Python list
-        predictions_list = predictions[0].tolist()
+        # Convert predictions to list and process class probabilities
+        predictions_list = predictions[0].tolist()  # Get probabilities for each class
         
         return class_names[predicted_class[0]], confidence, predictions_list
     except Exception as e:
         st.error(f"Error predicting tumor: {str(e)}")
         return None, None, None
+    
+# Update how we create visualizations
+def create_prediction_visualizations(predicted_class, confidence, raw_predictions):
+    try:
+        class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
+        probabilities = [float(p * 100) for p in raw_predictions]  # Convert to percentages
+        
+        # Bar Chart
+        fig_bar = go.Figure(data=[
+            go.Bar(
+                x=class_names,
+                y=probabilities,
+                marker_color=['#007bff' if name != predicted_class else '#28a745' 
+                            for name in class_names],
+                text=[f'{prob:.1f}%' for prob in probabilities],
+                textposition='auto',
+            )
+        ])
+        fig_bar.update_layout(
+            title="Prediction Probabilities",
+            yaxis_title="Probability (%)",
+            xaxis_title="Class",
+            showlegend=False,
+            height=400
+        )
+        
+        # Radar Chart
+        fig_radar = go.Figure(data=go.Scatterpolar(
+            r=probabilities,
+            theta=class_names,
+            fill='toself',
+            marker_color='rgb(40, 167, 69)'
+        ))
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 100]
+                )
+            ),
+            showlegend=False,
+            height=400
+        )
+        
+        # Confidence Gauge
+        result_color = "#28a745" if predicted_class == "No Tumor" else "#dc3545"
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=confidence,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            gauge={
+                'axis': {'range': [0, 100]},
+                'bar': {'color': result_color},
+                'steps': [
+                    {'range': [0, 50], 'color': '#ff4444'},
+                    {'range': [50, 75], 'color': '#ffbb33'},
+                    {'range': [75, 100], 'color': '#00C851'}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 70  # You can adjust this threshold
+                }
+            },
+            title={'text': "Confidence Level"}
+        ))
+        
+        return fig_bar, fig_radar, fig_gauge
+    except Exception as e:
+        st.error(f"Error creating visualizations: {str(e)}")
+        return None, None, None
+
 
 # Enhanced image processing functions
 def advanced_image_enhancement(image):
@@ -487,15 +559,19 @@ def main():
                             )
                             predicted_class, confidence, raw_predictions = predict_tumor(interpreter, processed_image)
                             
-                            result_data = {
-                                'date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                'prediction': predicted_class,
-                                'confidence': confidence,
-                                'raw_predictions': [raw_predictions],  # Wrap in list since it's already converted
-                                'settings_used': st.session_state.settings.copy()
-                            }
-                            
-                            st.session_state.history.append(result_data)
+                            if predicted_class is not None:
+                                result_data = {
+                                    'date': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    'prediction': predicted_class,
+                                    'confidence': confidence,
+                                    'raw_predictions': raw_predictions,  # Store raw predictions directly
+                                    'settings_used': st.session_state.settings.copy()
+                                }
+                                
+                                st.session_state.history.append(result_data)
+                                
+                                if st.session_state.settings['save_results']:
+                                    save_result(result_data)
                             
                             if st.session_state.settings['save_results']:
                                 save_result(result_data)
@@ -504,7 +580,7 @@ def main():
                             with col2:
                                 st.markdown("### Detailed Analysis Results")
                                 
-                                # Enhanced result display
+                                # Display result box
                                 result_color = "#28a745" if predicted_class == "No Tumor" else "#dc3545"
                                 st.markdown(f"""
                                 <div style='background-color: {"#212121" if predicted_class == "No Tumor" else "#212121"}; 
@@ -552,75 +628,22 @@ def main():
                                 st.markdown("### Detailed Probability Analysis")
                                 
                                 # Create tabs for different visualizations
+                                fig_bar, fig_radar, fig_gauge = create_prediction_visualizations(
+                                    predicted_class, 
+                                    confidence, 
+                                    raw_predictions
+                                )
+                                
                                 viz_tabs = st.tabs(["Bar Chart", "Radar Chart", "Confidence Gauge"])
                                 
                                 with viz_tabs[0]:
-                                    # Enhanced bar chart
-                                    class_names = ['Glioma', 'Meningioma', 'No Tumor', 'Pituitary']
-                                    probabilities = raw_predictions[0] * 100
-                                    
-                                    fig = go.Figure(data=[
-                                        go.Bar(
-                                            x=class_names,
-                                            y=probabilities,
-                                            marker_color=['#007bff' if name != predicted_class else '#28a745' 
-                                                        for name in class_names],
-                                            text=[f'{prob:.1f}%' for prob in probabilities],
-                                            textposition='auto',
-                                        )
-                                    ])
-                                    fig.update_layout(
-                                        title="Prediction Probabilities",
-                                        yaxis_title="Probability (%)",
-                                        xaxis_title="Class",
-                                        showlegend=False,
-                                        height=400
-                                    )
-                                    st.plotly_chart(fig,use_container_width=True)
+                                    st.plotly_chart(fig_bar, use_container_width=True)
                                 
                                 with viz_tabs[1]:
-                                    # Radar chart
-                                    fig = go.Figure(data=go.Scatterpolar(
-                                        r=probabilities,
-                                        theta=class_names,
-                                        fill='toself',
-                                        marker_color='rgb(40, 167, 69)'
-                                    ))
-                                    fig.update_layout(
-                                        polar=dict(
-                                            radialaxis=dict(
-                                                visible=True,
-                                                range=[0, 100]
-                                            )
-                                        ),
-                                        showlegend=False,
-                                        height=400
-                                    )
-                                    st.plotly_chart(fig,use_container_width=True)
+                                    st.plotly_chart(fig_radar, use_container_width=True)
                                 
                                 with viz_tabs[2]:
-                                    # Confidence gauge
-                                    fig = go.Figure(go.Indicator(
-                                        mode="gauge+number",
-                                        value=confidence,
-                                        domain={'x': [0, 1], 'y': [0, 1]},
-                                        gauge={
-                                            'axis': {'range': [0, 100]},
-                                            'bar': {'color': result_color},
-                                            'steps': [
-                                                {'range': [0, 50], 'color': '#ff4444'},
-                                                {'range': [50, 75], 'color': '#ffbb33'},
-                                                {'range': [75, 100], 'color': '#00C851'}
-                                            ],
-                                            'threshold': {
-                                                'line': {'color': "red", 'width': 4},
-                                                'thickness': 0.75,
-                                                'value': st.session_state.settings['confidence_threshold']
-                                            }
-                                        },
-                                        title={'text': "Confidence Level"}
-                                    ))
-                                    st.plotly_chart(fig,use_container_width=True)
+                                    st.plotly_chart(fig_gauge, use_container_width=True)
                 
                 except Exception as e:
                     st.error(f"Error during analysis: {str(e)}")
@@ -688,12 +711,13 @@ def main():
                             )
                             predicted_class, confidence, raw_predictions = predict_tumor(interpreter, processed_image)
                             
-                            batch_results.append({
-                                'filename': getattr(file, 'name', 'unknown'),
-                                'prediction': predicted_class,
-                                'confidence': confidence,
-                                'raw_predictions': [raw_predictions]  # Wrap in list since it's already converted
-                            })
+                            if predicted_class is not None:
+                                batch_results.append({
+                                    'filename': getattr(file, 'name', 'unknown'),
+                                    'prediction': predicted_class,
+                                    'confidence': confidence,
+                                    'raw_predictions': raw_predictions
+                                })
                             
                         except Exception as e:
                             st.error(f"Error processing {getattr(file, 'name', 'unknown')}: {str(e)}")
