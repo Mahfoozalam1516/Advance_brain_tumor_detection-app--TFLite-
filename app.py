@@ -59,7 +59,6 @@ st.markdown("""
         margin: 1rem 0;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    /* Updated tab styling for better readability */
     .stTabs [data-baseweb="tab-list"] {
         gap: 24px;
         background-color: #ffffff;
@@ -91,7 +90,6 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    /* Additional styles for better contrast */
     .stMarkdown {
         color: #f2f2f2;
     }
@@ -106,7 +104,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Initialize session state with new variables
+# Initialize session state
 if 'history' not in st.session_state:
     st.session_state.history = []
 if 'settings' not in st.session_state:
@@ -123,7 +121,7 @@ if 'settings' not in st.session_state:
 if 'comparison_images' not in st.session_state:
     st.session_state.comparison_images = []
 
-# Load model function
+# Updated model loading function
 def load_model():
     try:
         interpreter = tf.lite.Interpreter(model_path='brain_tumor_model_quantized_final.tflite')
@@ -531,7 +529,7 @@ def main():
     interpreter = load_model()
     
     if interpreter is None:
-        st.error("Failed to load TFLite model. Please check if 'brain_tumor_model_quantized.tflite' exists in the correct location.")
+        st.error("Failed to load TFLite model. Please check if 'brain_tumor_model_quantized_final.tflite' exists in the correct location.")
         return
     
     # Tab 1: Single Image Analysis
@@ -1125,12 +1123,11 @@ def save_result(result_data):
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
         
-        # Convert numpy types to native Python types
         result_data_serializable = {
             'date': result_data['date'],
             'prediction': result_data['prediction'],
             'confidence': float(result_data['confidence']),
-            'raw_predictions': result_data['raw_predictions'],  # Already a list
+            'raw_predictions': result_data['raw_predictions'],
             'settings_used': result_data['settings_used']
         }
         
@@ -1142,6 +1139,6 @@ def save_result(result_data):
             
     except Exception as e:
         st.warning(f"Could not save result: {str(e)}")
-        
+
 if __name__ == "__main__":
     main()
