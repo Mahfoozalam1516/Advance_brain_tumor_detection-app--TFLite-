@@ -126,7 +126,7 @@ if 'comparison_images' not in st.session_state:
 # Load model function
 def load_model():
     try:
-        interpreter = tf.lite.Interpreter(model_path='brain_tumor_model_quantized.tflite')
+        interpreter = tf.lite.Interpreter(model_path='brain_tumor_model_quantized_final.tflite')
         interpreter.allocate_tensors()
         return interpreter
     except Exception as e:
